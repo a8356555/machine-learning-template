@@ -5,15 +5,12 @@ from pathlib import Path
 import os
 import shap
 import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.svm import SVC
 import numpy as np
-import xgboost as xgb
-import lightgbm as lgb
 from sklearn import metrics
 import joblib
 from functools import partial
+
+from .models import model_factory
 
 
 NUMERICAL_COLS = ['feature_a']
@@ -117,15 +114,6 @@ class Trainer:
         self.all_seed_list = all_seed_list
         self.label_col = label_col
         self.enable_shap_plot = enable_shap_plot
-        self.model_dict = {
-            'LGBM': partial(lgb.LGBMClassifier, 
-                            # max_depth=max_depth, n_estimators=n_estimators, 
-                            # min_split_gain=1, reg_lambda=1, min_child_weight=1
-                            ),
-            'LR': LogisticRegression,
-            'RF': RandomForestClassifier,
-            'SVM': partial(SVC, probability=True),
-        }
         self.model_name_list = model_name_list
         self.is_multi_classes = df[label_col].nunique() > 2
         self.statistical_data_normalizer = StatisticalDataNormalizer(debug=debug)
@@ -174,7 +162,7 @@ class Trainer:
             return [self._prepare_model(name, seed) for name in self.model_name_list]
     
     def _prepare_model(self, name, seed):
-        return self.model_dict[name](random_state=seed)
+        return model_factory.create(name)(random_state=seed)
         
     def _prepare_data(self, seed):
         normalized_df, feature_cols, feature_names = self.statistical_data_normalizer.normalize(self.df.copy(), seed)
